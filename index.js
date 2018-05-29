@@ -6,6 +6,10 @@ var cheerio = require('cheerio');
 var isUrl = require('is-url');
 var lists = require('./lists.js');
 
+var express = require('express')
+var path = require('path')
+var PORT = process.env.PORT || 5000
+
 var defaultErr = "I'm sorry, Dave, I'm afraid I can't do that.";
 
 // tokens
@@ -313,3 +317,5 @@ var reactChain = function(count, channel, timestamp, end) {
             bot.reply(message, defaultErr);
         });
 }
+
+express().listen(PORT, () => console.log(`Listening on ${ PORT }`));
