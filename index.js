@@ -1,20 +1,20 @@
 var Botkit = require('botkit');
 var mongoose = require('mongoose');
-// var connection = mongoose.createConnection('mongodb://localhost/tars');
 var request = require('superagent');
 var cheerio = require('cheerio');
 var isUrl = require('is-url');
 var lists = require('./lists.js');
+var express = require('express');
+var path = require('path');
 
-var express = require('express')
-var path = require('path')
-var PORT = process.env.PORT || 5000
+// consts
+const SMMRY_TOKEN = process.env.SMMRY_TOKEN;
+const SLACK_TOKEN = process.env.SLACK_TOKEN;
+const PORT = process.env.PORT || 5000;
+
+express().listen(PORT);
 
 var defaultErr = "I'm sorry, Dave, I'm afraid I can't do that.";
-
-// tokens
-var SMMRY_TOKEN = process.env.SMMRY_TOKEN;
-var SLACK_TOKEN = process.env.SLACK_TOKEN;
 
 // export lists
 var fuck = lists.fuckOff;
@@ -317,5 +317,3 @@ var reactChain = function(count, channel, timestamp, end) {
             bot.reply(message, defaultErr);
         });
 }
-
-express().listen(PORT, () => console.log(`Listening on ${ PORT }`));

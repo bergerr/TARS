@@ -3,5 +3,5 @@
 SLACK_TOKEN=<token> SMMRY_TOKEN=<token> node index.js
 ```
 
-# Runbook
-This is currently running on thanos against thanos' internal mongo db instance.
+## Commands
+To show all available commands use `help` in slack
