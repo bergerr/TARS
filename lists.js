@@ -39,6 +39,7 @@ var sitesToSummarize = [
     'bleedingcool.com/',
     'cbsnews.com/',
     'cnn.com/',
+    'engadget.com/',
     'espn.com/',
     'fivethirtyeight.com/',
     'foxnews.com/',
@@ -53,6 +54,7 @@ var sitesToSummarize = [
     'thehill.com/',
     'theintercept.com/',
     'theverge.com/',
+    'vice.com/',
     'washingtonpost.com/',
     'wral.com/'
 ];
@@ -66,6 +68,7 @@ var menus = {
     'carolina ale house': 'https://www.carolinaalehouse.com/menu/',
     'champa': 'https://www.champathaisushi.com/menus',
     'jason’s deli': 'https://www.jasonsdeli.com/menu',
+    'pei wei': 'https://order.peiwei.com/menu/108-brier-creek',
     'red robin': 'https://www.redrobin.com/content/dam/web/menu/printable/menu-rrgb-t2.pdf',
     'san jose': 'http://sanjosetacosandtequilas.com/wp-content/uploads/2018/03/San_Jose_Menu_Skyland.pdf',
     'tamarind': 'https://tamarindeatery.revelup.com/weborder/',
@@ -76,8 +79,21 @@ var menus = {
     'zayka': 'https://zaykaraleigh.com/our-menu/'
 }
 
+var people = [
+    'Andres',
+    'Brett',
+    'Frank',
+    'Jamie',
+    'Linda',
+    'Lura',
+    'Melanie',
+    'Rachel',
+    'Ryan'
+];
+
 module.exports = {
     fuckOff: fuckOff,
     sitesToSummarize: sitesToSummarize,
-    menus: menus
+    menus: menus,
+    people: people
 }

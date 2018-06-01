@@ -6,6 +6,7 @@ var isUrl = require('is-url');
 var lists = require('./lists.js');
 var express = require('express');
 var path = require('path');
+var moment = require('moment');
 
 // consts
 const SMMRY_TOKEN = process.env.SMMRY_TOKEN;
@@ -17,9 +18,10 @@ express().listen(PORT);
 var defaultErr = "I'm sorry, Dave, I'm afraid I can't do that.";
 
 // export lists
-var fuck = lists.fuckOff;
-var sitesToSummarize = lists.sitesToSummarize;
-var menus = lists.menus;
+var LIST_FUCK = lists.fuckOff;
+var LIST_SITES = lists.sitesToSummarize;
+var LIST_MENUS = lists.menus;
+var LIST_PEOPLE = lists.people;
 
 // lists
 var lunchVote = [':cubimal_chick: alpaca chicken', ':pizza: brixx', ':beer: carolina ale house',
@@ -53,35 +55,36 @@ controller.hears(/^help/i, ['direct_message','direct_mention','mention'],functio
 
 // list food trucks
 controller.hears(/^trucks/i, ['direct_message','direct_mention','mention'],function(bot,message) {
-    var messageText = 'Food trucks this week:';
-    var date = '';
+    var messageText = 'Upcoming food trucks:';
     var currDay = '';
     var link = '';
 
     // parse food truck html
-    request
-        .get('http://www.briercreekeatsalternative.com/weeklylineup/')
-        .then(function(res) {
-            var $ = cheerio.load(res.res.text);
-            $('.summary-title-link').each(function(i, element) {
-                date = $(this).parent().parent().parent().parent().parent().parent().parent().parent().prev().children().find('h2').text().trim();
-                if (i === 0) {
-                    messageText += '\n*' + date.substring(0, date.indexOf('|')) + '*';
-                    currDay = date;
-                }
-                if (currDay !== date) {
-                    messageText += '\n \n*' + date.substring(0, date.indexOf('|')) +'*';
-                    currDay = date;
-                }
+    localTrucks(bot).then(function(res) {
+        var localOut = res;
 
-                if ($(this).attr('href').startsWith('/')) {
-                    link = "_No working link_";
+        // parse frontier food trucks
+        frontierTrucks(bot).then(function(res) {
+            var frontierOut = res;
+
+            var mergedJson = {...localOut, ...frontierOut};
+            var sorted = Object.keys(mergedJson).sort();
+
+            for (key in sorted) {
+                var mergedKey = sorted[key];
+                var today = moment().format('MMMM-DD-YYYY');
+                var mergedCompare = moment(mergedKey).format('MMMM-DD-YYYY');
+                if (moment(today, 'MMMM-DD-YYYY').isAfter(moment(mergedCompare, 'MMMM-DD-YYYY'))) {
+                    // do not show the trucks
                 } else {
-                    link = $(this).attr('href');
+                    var date = moment(mergedKey).format('MMMM Do YYYY')
+                    if (moment(mergedKey).day() === 5) {
+                        messageText += '\n\n\n*' + date + '* - _Fidelity_' + mergedJson[mergedKey];
+                    } else {
+                        messageText += '\n\n\n*' + date + '* - _Courtyard_' + mergedJson[mergedKey];
+                    }
                 }
-
-                messageText += '\n ' + $(this).text() + ' - ' + link;
-            });
+            }
 
             var post = {
                 channel: message.channel,
@@ -103,11 +106,14 @@ controller.hears(/^trucks/i, ['direct_message','direct_mention','mention'],funct
                     console.log(err);
                     bot.reply(message, defaultErr);
                 });
-        })
-        .catch(function(err) {
-            console.log(err);
-            bot.reply(message, defaultErr);
+
         });
+
+    })
+    .catch(function(err) {
+        console.log(err);
+        bot.reply(message, "Uh oh. Shit's broke.");
+    });
 });
 
 // fuck off as a service
@@ -117,21 +123,10 @@ controller.hears(/^fuck off [A-z]+$/i, ['direct_message','direct_mention','menti
         var subject = messageArr[2];
 
         if (subject.toLowerCase() === 'random') {
-            var people = [
-                'Andres',
-                'Brett',
-                'Jamie',
-                'Linda',
-                'Lura',
-                'Melanie',
-                'Rachel',
-                'Ryan'
-            ]
-
-            var subject = people[Math.floor(Math.random() * people.length)];
+            var subject = LIST_PEOPLE[Math.floor(Math.random() * LIST_PEOPLE.length)];
         }
 
-        var randomFuck = fuck[Math.floor(Math.random() * fuck.length)];
+        var randomFuck = LIST_FUCK[Math.floor(Math.random() * LIST_FUCK.length)];
         var fooas = randomFuck.replace(':name', subject);
 
         request
@@ -151,7 +146,7 @@ controller.hears(/^fuck off [A-z]+$/i, ['direct_message','direct_mention','menti
 });
 
 // article summary
-controller.hears(sitesToSummarize, ['direct_message','direct_mention','mention','ambient'],function(bot,message) {
+controller.hears(LIST_SITES, ['direct_message','direct_mention','mention','ambient'],function(bot,message) {
     var split = message.text.split(' ');
     var leave = false;
     var potentialUrl = '';
@@ -159,8 +154,8 @@ controller.hears(sitesToSummarize, ['direct_message','direct_mention','mention',
     for (key in split) {
         potentialUrl = split[key].substring(1, split[key].length - 1);
         if (isUrl(potentialUrl)) {
-            for (site in sitesToSummarize) {
-                if (potentialUrl.indexOf(sitesToSummarize[site]) > -1){
+            for (site in LIST_SITES) {
+                if (potentialUrl.indexOf(LIST_SITES[site]) > -1){
                     var url = potentialUrl;
                     leave = true;
                     break;
@@ -211,18 +206,18 @@ controller.hears(/^menu/i, ['direct_message','direct_mention','mention'],functio
 
     if (subject == 'list') {    // list all menus options
         messageText += '*Here are your options:*' + '\n';
-        for (key in menus) {
+        for (key in LIST_MENUS) {
             messageText += key + '\n';
         }
     } else if (subject == 'all') {  // list all menus
-        for (key in menus) {
-            messageText += '*' + key + '* - ' + menus[key] + '\n';
+        for (key in LIST_MENUS) {
+            messageText += '*' + key + '* - ' + LIST_MENUS[key] + '\n';
         }
     } else {    // get a specific menu
-        var site = menus[subject];
+        var site = LIST_MENUS[subject];
 
-        if (menus.hasOwnProperty(subject)) {
-            var site = menus[subject];
+        if (LIST_MENUS.hasOwnProperty(subject)) {
+            var site = LIST_MENUS[subject];
             messageText += '*' + subject + '* - ' + site;
         } else {
             messageText += 'No menu found';
@@ -258,9 +253,9 @@ controller.hears(/^lunch/i, ['direct_message','direct_mention','mention'],functi
         messageText += lunchVote[key] + '\n'
     }
 
-    var day = new Date().getDay();
+    var day = moment().day();
 
-    if (day === 1 || day === 3) {
+    if (day === 1 || day === 3 || day === 5) {
         messageText += ':truck: food trucks'
     }
 
@@ -291,8 +286,82 @@ controller.hears(/^open the .*doors.*/i, ['direct_message','direct_mention','men
     bot.reply(message, defaultErr);
 });
 
+//////////////////////////////////////////
+//              functions
+//////////////////////////////////////////
+var localTrucks = function(bot) {
+    return new Promise(function (resolve, reject) {
+        var output = '';
+        var trucks = '';
+        var json = {};
 
-// functions
+        request
+            .get('http://www.briercreekeatsalternative.com/weeklylineup/')
+            .then(function(res) {
+                var $ = cheerio.load(res.res.text);
+                $('.summary-title-link').each(function(i, element) {
+                    date = $(this).parent().parent().parent().parent().parent().parent().parent().parent().prev().children().find('h2').text().trim();
+                    if (i === 0) {
+                        output = moment(date.substring(0, date.indexOf('|')).replace(',',''), 'MMMM Do YYYY').format();
+                        currDay = date;
+                    }
+                    if (currDay !== date) {
+                        json[output] = trucks;
+                        trucks = '';
+                        output = moment(date.substring(0, date.indexOf('|')).replace(',',''), 'MMMM Do YYYY').format();
+                        currDay = date;
+                    }
+
+                    if ($(this).attr('href').startsWith('/')) {
+                        link = "_No working link_";
+                    } else {
+                        link = $(this).attr('href');
+                    }
+
+                    trucks += '\n ' + $(this).text() + ' - ' + link;
+                });
+                json[output] = trucks;
+                resolve(json);
+
+            })
+            .catch(function(err) {
+                console.log(err);
+                bot.reply(message, "Uh oh. Shit's broke.");
+                reject(err);
+            });
+    });
+}
+
+var frontierTrucks = function(bot) {
+    return new Promise(function (resolve, reject) {
+        var output = '';
+        var json = {};
+
+        request
+            .get('https://www.rtp.org/program/rtp-food-truck-rodeo/')
+            .then(function(res) {
+                var $ = cheerio.load(res.res.text);
+                var month = $('.simcal-current-month').text();
+                var year = $('.simcal-current-year').text();
+                $('.simcal-weekday-5').each(function(i, element) {
+                    output = '';
+                    var day = $(this).find('.simcal-day-number').text();
+                    var date = moment(month + ' ' + day + ' ' + year, 'MMMM D YYYY').format();
+                    $(this).find('strong').each(function(j, element) {
+                        output += '\n' + $(this).text();
+                    });
+                    json[date] = output;
+                })
+                resolve(json);
+            })
+            .catch(function(err) {
+                console.log(err);
+                bot.reply(message, "Couldn't find food trucks at Fidelity");
+                reject(err);
+            });
+    });
+}
+
 var reactChain = function(count, channel, timestamp, end) {
     if (count === end) {
         return;
