@@ -55,6 +55,7 @@ var sitesToSummarize = [
     'theintercept.com/',
     'theverge.com/',
     'vice.com/',
+    'vox.com/',
     'washingtonpost.com/',
     'wral.com/'
 ];
@@ -91,9 +92,50 @@ var people = [
     'Ryan'
 ];
 
+var trucks = {
+    '13th taco': 'http://the13thtaco.com/',
+    '454 grill': 'https://www.454grillfoodtruck.com/',
+    'american meltdown': 'http://www.americanmeltdown.org',
+    'an edible perspective': 'https://anedibleperspective.com/',
+    'baguettaboutit': 'http://www.baguettaboutit.com/',
+    'belgian waffle crafters': 'https://belgianwafflecrafters.com/',
+    'bo\'s kitchen': 'http://www.boskc.com/',
+    'boricua soul': 'https://boricuasoulnc.com/',
+    'caffe bellezza': 'http://caffebellezza.com/',
+    'chick-n-que': 'http://www.chicknque.com/',
+    'chirba chirba': 'https://www.chirbachirba.com/',
+    'cockadoodlemoo': 'http://cockadoodlemootruck.com/',
+    'coco crissi shaved ice': 'http://www.cococrissi.com/',
+    'crispy gyoza': 'http://www.crispygyoza.com/',
+    'daddy bob\'s bbq': 'https://www.daddybobsbarbeque.com/',
+    'del\'s frozen lemonade': 'https://dels.com/',
+    'fahsyrah\'s lemonade': 'https://www.fahsyrahslemonade.com/',
+    'fresh local ice cream': 'http://www.freshlocalicecream.com/',
+    'frostbites': 'https://www.facebook.com/FrostBitesofFranklinton/',
+    'gettin sauced in the city': 'https://www.gettinsaucedinthecity.com/',
+    'hot chix hotcakes': 'http://www.hotcakesandchicken.com/',
+    'ice cream boss': 'http://www.icecreambossnc.com/',
+    'lee\'s kitchen': 'http://leeskitchenjamaican.com/',
+    'lugia\'s ice cream': 'https://lugiasicecream.com/',
+    'moonrunners': 'http://www.moonrunnerstruck.com/',
+    'not just icing': 'http://www.notjusticing.com',
+    'only burger': 'http://onlyburger.com/',
+    'pie pushers': 'https://www.piepushers.com/',
+    'poblanos tacos': 'http://www.poblanostacos.com/',
+    'route bistro': 'http://routebistro.com/',
+    'southern snack shack': 'http://www.southsnackshack.com/',
+    'sympathy for the deli': 'http://www.sympathyforthedeli.com/',
+    'thai box zing': 'http://www.thaiboxzing.com/',
+    'the bamboo cookhouse': 'https://www.thebamboocookhouse.com',
+    'the corner venezuelan': 'http://www.thecornervzla.com/',
+    'the cow and the oak': 'http://www.cowandoak.com/',
+    'the humble pig': 'http://www.thehumblepig.com/index.html'
+}
+
 module.exports = {
     fuckOff: fuckOff,
     sitesToSummarize: sitesToSummarize,
     menus: menus,
-    people: people
+    people: people,
+    trucks: trucks
 }

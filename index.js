@@ -7,6 +7,7 @@ var lists = require('./lists.js');
 var express = require('express');
 var path = require('path');
 var moment = require('moment');
+var _ = require('lodash');
 
 // consts
 const SMMRY_TOKEN = process.env.SMMRY_TOKEN;
@@ -15,13 +16,14 @@ const PORT = process.env.PORT || 5000;
 
 express().listen(PORT);
 
-var defaultErr = "I'm sorry, Dave, I'm afraid I can't do that.";
-
 // export lists
 var LIST_FUCK = lists.fuckOff;
 var LIST_SITES = lists.sitesToSummarize;
 var LIST_MENUS = lists.menus;
 var LIST_PEOPLE = lists.people;
+var LIST_TRUCKS = lists.trucks;
+
+var defaultErr = "I'm sorry, Dave, I'm afraid I can't do that.";
 
 // lists
 var lunchVote = [':cubimal_chick: alpaca chicken', ':pizza: brixx', ':beer: carolina ale house',
@@ -35,10 +37,26 @@ var controller = Botkit.slackbot({
     stats_optout: true
 });
 
-controller.spawn({
-    retry: true,
-    token: process.env.SLACK_TOKEN,
-}).startRTM();
+var bot = controller.spawn({
+    token: process.env.SLACK_TOKEN
+});
+
+// handle RTM closure
+function start_rtm() {
+    bot.startRTM(function(err,bot,payload) {
+        if (err) {
+            console.log('Failed to start RTM')
+            return setTimeout(start_rtm, 60000);
+        }
+        console.log("RTM started!");
+    });
+}
+
+controller.on('rtm_close', function(bot, err) {
+        start_rtm();
+});
+
+start_rtm();
 
 // list uses
 controller.hears(/^help/i, ['direct_message','direct_mention','mention'],function(bot,message) {
@@ -50,12 +68,13 @@ controller.hears(/^help/i, ['direct_message','direct_mention','mention'],functio
     messageText += '\n *menu all* - show every menu';
     messageText += '\n *menu <restaurant>* - show a specific menu';
     messageText += '\n *lunch* - vote for lunch';
+
     bot.reply(message, messageText);
 });
 
 // list food trucks
 controller.hears(/^trucks/i, ['direct_message','direct_mention','mention'],function(bot,message) {
-    var messageText = 'Upcoming food trucks:';
+    var messageText = 'Upcoming food trucks this week:';
     var currDay = '';
     var link = '';
 
@@ -70,11 +89,16 @@ controller.hears(/^trucks/i, ['direct_message','direct_mention','mention'],funct
             var mergedJson = {...localOut, ...frontierOut};
             var sorted = Object.keys(mergedJson).sort();
 
-            for (key in sorted) {
-                var mergedKey = sorted[key];
+            _.forEach(sorted, function(value) {
+                var mergedKey = value;
                 var today = moment().format('MMMM-DD-YYYY');
+                var momentToday = moment(today, 'MMMM-DD-YYYY');
                 var mergedCompare = moment(mergedKey).format('MMMM-DD-YYYY');
-                if (moment(today, 'MMMM-DD-YYYY').isAfter(moment(mergedCompare, 'MMMM-DD-YYYY'))) {
+                var momentMerged = moment(mergedCompare, 'MMMM-DD-YYYY');
+
+                if (momentToday.isAfter(momentMerged) ||
+                    momentToday.day() > momentMerged.day() ||
+                    momentMerged.date() > moment().date() + 7) {
                     // do not show the trucks
                 } else {
                     var date = moment(mergedKey).format('MMMM Do YYYY')
@@ -84,7 +108,7 @@ controller.hears(/^trucks/i, ['direct_message','direct_mention','mention'],funct
                         messageText += '\n\n\n*' + date + '* - _Courtyard_' + mergedJson[mergedKey];
                     }
                 }
-            }
+            });
 
             var post = {
                 channel: message.channel,
@@ -147,22 +171,18 @@ controller.hears(/^fuck off [A-z]+$/i, ['direct_message','direct_mention','menti
 
 // article summary
 controller.hears(LIST_SITES, ['direct_message','direct_mention','mention','ambient'],function(bot,message) {
-    var split = message.text.split(' ');
-    var leave = false;
+    var split = message.text.replace(/\n/g, ' ').split(' ');
     var potentialUrl = '';
 
+    sites:
     for (key in split) {
         potentialUrl = split[key].substring(1, split[key].length - 1);
         if (isUrl(potentialUrl)) {
             for (site in LIST_SITES) {
                 if (potentialUrl.indexOf(LIST_SITES[site]) > -1){
                     var url = potentialUrl;
-                    leave = true;
-                    break;
+                    break sites;
                 }
-            }
-            if (leave) {
-                break;
             }
         }
     }
@@ -206,13 +226,13 @@ controller.hears(/^menu/i, ['direct_message','direct_mention','mention'],functio
 
     if (subject == 'list') {    // list all menus options
         messageText += '*Here are your options:*' + '\n';
-        for (key in LIST_MENUS) {
+        _.forEach(LIST_MENUS, function(value, key) {
             messageText += key + '\n';
-        }
+        });
     } else if (subject == 'all') {  // list all menus
-        for (key in LIST_MENUS) {
-            messageText += '*' + key + '* - ' + LIST_MENUS[key] + '\n';
-        }
+        _.forEach(LIST_MENUS, function(value, key) {
+            messageText += '*' + key + '* - ' + value + '\n';
+        });
     } else {    // get a specific menu
         var site = LIST_MENUS[subject];
 
@@ -249,9 +269,10 @@ controller.hears(/^menu/i, ['direct_message','direct_mention','mention'],functio
 // lunch vote
 controller.hears(/^lunch/i, ['direct_message','direct_mention','mention'],function(bot,message) {
     var messageText = '';
-    for (key in lunchVote) {
-        messageText += lunchVote[key] + '\n'
-    }
+
+    _.forEach(lunchVote, function(value) {
+        messageText += value + '\n';
+    });
 
     var day = moment().day();
 
@@ -281,13 +302,127 @@ controller.hears(/^lunch/i, ['direct_message','direct_mention','mention'],functi
         });
 });
 
+// java
+controller.hears(/^java\d+ .+$/i, ['direct_message','direct_mention','mention'],function(bot,message) {
+    var messageText = '';
+    var tokens = message.text.split(' ');
+    var version = tokens[0].replace(/\D+/g, '');
+    var search = tokens[1];
+    var baseUrl = 'https://docs.oracle.com/javase/' + version + '/docs/api/';
+
+    request
+        .get(baseUrl + 'allclasses-frame.html')
+        .then(function(res) {
+            var $ = cheerio.load(res.text);
+            var element = $('li').filter(function() {
+                return $(this).text().trim() === search;
+            }).children().attr('href');
+            if (!element) {
+                messageText = 'No class found with that name.'
+                bot.reply(message, messageText);
+            } else {
+                messageText = baseUrl + element;
+                bot.reply(message, messageText);
+            }
+        })
+        .catch(function(err) {
+            console.log(tokens[0] + ': ' + err.status);
+            if (err.status === 404) {
+                bot.reply(message, 'That version of Java could not be found.');
+            } else {
+                bot.reply(message, defaultErr);
+            }
+
+        });
+});
+
+// angular
+controller.hears(/^angular\d+ .+$/i, ['direct_message','direct_mention','mention'],function(bot,message) {
+    var messageText = '';
+    var tokens = message.text.split(' ');
+    var version = tokens[0].replace(/\D+/g, '');
+    var search = tokens[1];
+    var baseUrl = '';
+    var extension = '';
+
+    switch (version) {
+        case '2':
+            baseUrl = 'https://v2.angular.io/';
+            extension = 'docs/ts/latest/api/api-list.json';
+            break;
+        case '4':
+            baseUrl = 'https://v4.angular.io/';
+            extension = 'generated/docs/api/api-list.json';
+            break;
+        case '5':
+            baseUrl = 'https://v5.angular.io/';
+            extension = 'generated/docs/api/api-list.json';
+            break;
+        case '6':
+            baseUrl = 'https://angular.io/';
+            extension = 'generated/docs/api/api-list.json';
+            break;
+        default:
+            bot.reply(message, 'That version of Angular could not be found.');
+            return;
+    }
+
+    request
+        .get(baseUrl + extension)
+        .set('Accept', 'application/json')
+        .then(function(res) {
+            // angular 2 json is a different structure
+            if (version > 2) {
+                var outArr = [];
+                _.forEach(res.body, function(value) {
+                    var find = _.find(value.items, ['name', search.toLowerCase()]);
+                    if(find) {
+                        outArr.push(find);
+                    }
+                });
+                bot.reply(message, urlReturn(outArr));
+            } else {
+                var singleArr = [];
+                _.forEach(res.body, function(value, key) {
+                    singleArr.push(value);
+                });
+                singleArr = _.flatten(singleArr);
+                var outArr = _.filter(singleArr, function(res) {
+                    return res['title'].toLowerCase() === search.toLowerCase();
+                });
+                bot.reply(message, urlReturn(outArr));
+            }
+        })
+        .catch(function(err) {
+            console.log(err);
+            bot.reply(message, defaultErr);
+        });
+
+    // format json array
+    var urlReturn = function(arr) {
+        if (arr.length > 1) {
+            messageText += 'I found multiple matching functions:\n'
+        }
+        _.forEach(arr, function(value) {
+            messageText += baseUrl + value.path + '\n';
+        });
+        return messageText;
+    }
+});
+
+// snake
+controller.hears(/hsss/i, ['direct_message','direct_mention','mention','ambient'],function(bot,message) {
+    var messageText = 'https://www.youtube.com/watch?v=Ti4sqG85FU4';
+    bot.reply(message, messageText);
+});
+
 // space odyssey
 controller.hears(/^open the .*doors.*/i, ['direct_message','direct_mention','mention','ambient'],function(bot,message) {
     bot.reply(message, defaultErr);
 });
 
 //////////////////////////////////////////
-//              functions
+//              FUNCTIONS
 //////////////////////////////////////////
 var localTrucks = function(bot) {
     return new Promise(function (resolve, reject) {
@@ -312,13 +447,16 @@ var localTrucks = function(bot) {
                         currDay = date;
                     }
 
-                    if ($(this).attr('href').startsWith('/')) {
-                        link = "_No working link_";
-                    } else {
+                    var truck = $(this).text().trim();
+                    var link = '_No working link_';
+                    if (!$(this).attr('href').startsWith('/')) {
                         link = $(this).attr('href');
                     }
+                    else if (LIST_TRUCKS.hasOwnProperty(truck.toLowerCase())) {
+                        link = LIST_TRUCKS[truck.toLowerCase()];
+                    }
 
-                    trucks += '\n ' + $(this).text() + ' - ' + link;
+                    trucks += '\n ' + truck + ' - ' + link;
                 });
                 json[output] = trucks;
                 resolve(json);
@@ -347,9 +485,16 @@ var frontierTrucks = function(bot) {
                     output = '';
                     var day = $(this).find('.simcal-day-number').text();
                     var date = moment(month + ' ' + day + ' ' + year, 'MMMM D YYYY').format();
+
                     $(this).find('strong').each(function(j, element) {
-                        output += '\n' + $(this).text();
+                        var truck = $(this).text().trim();
+                        var link = '_No working link_';
+                        if (LIST_TRUCKS.hasOwnProperty(truck.toLowerCase())) {
+                            link = LIST_TRUCKS[truck.toLowerCase()];
+                        }
+                        output += '\n' + truck + ' - ' + link;
                     });
+
                     json[date] = output;
                 })
                 resolve(json);
