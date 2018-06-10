@@ -3,8 +3,8 @@ Slack and Smmry tokens are taken from the nonexistent file `auth.js` with the fo
 
 ```json
 var keys = {
-    'slack': 'slack-key',
-    'smmry': 'smmry-key'
+    "slack": "slack-key",
+    "smmry": "smmry-key"
 }
 ```
 
