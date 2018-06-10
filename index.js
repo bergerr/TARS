@@ -1,20 +1,18 @@
-var Botkit = require('botkit');
-var mongoose = require('mongoose');
-var request = require('superagent');
-var cheerio = require('cheerio');
-var isUrl = require('is-url');
-var lists = require('./lists.js');
-var express = require('express');
-var path = require('path');
-var moment = require('moment');
-var _ = require('lodash');
+var Botkit      = require('botkit');
+var cheerio     = require('cheerio');
+var decode      = require('unescape');
+var express     = require('express');
+var isUrl       = require('is-url');
+var moment      = require('moment');
+var mongoose    = require('mongoose');
+var path        = require('path');
+var request     = require('superagent');
+var _           = require('lodash');
 
-// consts
-const SMMRY_TOKEN = process.env.SMMRY_TOKEN;
-const SLACK_TOKEN = process.env.SLACK_TOKEN;
-const PORT = process.env.PORT || 5000;
 
-express().listen(PORT);
+// exports
+var lists       = require('./lists.js');
+var auth        = require('./auth.js');
 
 // export lists
 var LIST_FUCK = lists.fuckOff;
@@ -22,6 +20,14 @@ var LIST_SITES = lists.sitesToSummarize;
 var LIST_MENUS = lists.menus;
 var LIST_PEOPLE = lists.people;
 var LIST_TRUCKS = lists.trucks;
+var LIST_KEYS = auth.keys;
+
+// consts
+const SLACK_TOKEN = LIST_KEYS.slack;
+const SMMRY_TOKEN = LIST_KEYS.smmry;
+const PORT = process.env.PORT || 5000;
+
+express().listen(PORT);
 
 var defaultErr = "I'm sorry, Dave, I'm afraid I can't do that.";
 
@@ -38,13 +44,14 @@ var controller = Botkit.slackbot({
 });
 
 var bot = controller.spawn({
-    token: process.env.SLACK_TOKEN
+    token: SLACK_TOKEN
 });
 
 // handle RTM closure
 function start_rtm() {
     bot.startRTM(function(err,bot,payload) {
         if (err) {
+            console.log(err);
             console.log('Failed to start RTM')
             return setTimeout(start_rtm, 60000);
         }
@@ -68,7 +75,9 @@ controller.hears(/^help/i, ['direct_message','direct_mention','mention'],functio
     messageText += '\n *menu all* - show every menu';
     messageText += '\n *menu <restaurant>* - show a specific menu';
     messageText += '\n *lunch* - vote for lunch';
-
+    messageText += '\n *java<#> <class>* - pick a java version and class and show the docs url';
+    messageText += '\n *angular<#> <function>* - pick an angular version and function and show the docs url';
+    messageText += '\n *python<#> <function>* - pick a python version and function and show the docs url';
     bot.reply(message, messageText);
 });
 
@@ -97,7 +106,7 @@ controller.hears(/^trucks/i, ['direct_message','direct_mention','mention'],funct
                 var momentMerged = moment(mergedCompare, 'MMMM-DD-YYYY');
 
                 if (momentToday.isAfter(momentMerged) ||
-                    momentToday.day() > momentMerged.day() ||
+                    (momentToday.day() > momentMerged.day() && momentToday.day() < 6) ||
                     momentMerged.date() > moment().date() + 7) {
                     // do not show the trucks
                 } else {
@@ -131,6 +140,9 @@ controller.hears(/^trucks/i, ['direct_message','direct_mention','mention'],funct
                     bot.reply(message, defaultErr);
                 });
 
+        }).catch(function(err) {
+            console.log(err);
+            bot.reply(message, "Uh oh. Shit's broke.");
         });
 
     })
@@ -322,7 +334,12 @@ controller.hears(/^java\d+ .+$/i, ['direct_message','direct_mention','mention'],
                 bot.reply(message, messageText);
             } else {
                 messageText = baseUrl + element;
-                bot.reply(message, messageText);
+                stackOverflow('java', search).then(function(res) {
+                    bot.reply(message, messageText + res);
+                }).catch(function(err) {
+                    console.log(err);
+                    bot.reply(message, messageText);
+                });
             }
         })
         .catch(function(err) {
@@ -380,7 +397,7 @@ controller.hears(/^angular\d+ .+$/i, ['direct_message','direct_mention','mention
                         outArr.push(find);
                     }
                 });
-                bot.reply(message, urlReturn(outArr));
+                urlReturn(outArr);
             } else {
                 var singleArr = [];
                 _.forEach(res.body, function(value, key) {
@@ -390,7 +407,7 @@ controller.hears(/^angular\d+ .+$/i, ['direct_message','direct_mention','mention
                 var outArr = _.filter(singleArr, function(res) {
                     return res['title'].toLowerCase() === search.toLowerCase();
                 });
-                bot.reply(message, urlReturn(outArr));
+                urlReturn(outArr);
             }
         })
         .catch(function(err) {
@@ -406,8 +423,53 @@ controller.hears(/^angular\d+ .+$/i, ['direct_message','direct_mention','mention
         _.forEach(arr, function(value) {
             messageText += baseUrl + value.path + '\n';
         });
-        return messageText;
+        stackOverflow('angular', search).then(function(res) {
+            bot.reply(message, messageText + res);
+        }).catch(function(err) {
+            console.log(err);
+            bot.reply(message, messageText);
+        });
     }
+});
+
+// python
+controller.hears(/^python\d\.\d .+$/i, ['direct_message','direct_mention','mention'],function(bot,message) {
+    var messageText = '';
+    var tokens = message.text.split(' ');
+    var version = tokens[0].replace(/python/g, '');
+    var search = tokens[1];
+    var baseUrl = 'https://docs.python.org/' + version + '/';
+
+    request
+        .get(baseUrl + 'py-modindex.html')
+        .then(function(res) {
+            var $ = cheerio.load(res.text);
+            var element = $('code').filter(function() {
+                return $(this).text().trim() === search;
+            }).parent().attr('href');
+            if (!element) {
+                messageText = 'No function found with that name.'
+                bot.reply(message, messageText);
+            } else {
+                messageText = baseUrl + element;
+                stackOverflow('python', search + ' module').then(function(res) {
+                    bot.reply(message, messageText + res);
+                }).catch(function(err) {
+                    console.log(err);
+                    bot.reply(message, messageText);
+                });
+
+            }
+        })
+        .catch(function(err) {
+            console.log(tokens[0] + ': ' + err.status);
+            if (err.status === 404) {
+                bot.reply(message, 'That version of Python could not be found.');
+            } else {
+                bot.reply(message, defaultErr);
+            }
+
+        });
 });
 
 // snake
@@ -502,6 +564,37 @@ var frontierTrucks = function(bot) {
             .catch(function(err) {
                 console.log(err);
                 bot.reply(message, "Couldn't find food trucks at Fidelity");
+                reject(err);
+            });
+    });
+}
+
+var stackOverflow = function(language, search) {
+    return new Promise(function (resolve, reject) {
+        var url = 'https://api.stackexchange.com/2.2/search/advanced'
+                + '?order=desc&sort=relevance&accepted=True&tagged='
+                + language + '&title=' + search + '&site=stackoverflow';
+        var ret = '';
+
+        request
+            .get(url)
+            .then(function(res) {
+                var len = res.body.items.length;
+                if (len === 0) {
+                    ret += '\n\nNo StackOverflow questions found.'
+                    resolve(ret);
+                    return;
+                } else if (len > 5) {
+                    len = 5
+                }
+                ret += '\n\n*Top ' + len + ' StackOverflow questions:*';
+                for (var i = 0; i < len; i++) {
+                    ret += '\n' + (i+1) + '. ' + decode(res.body.items[i].title) + '\n      - ' + res.body.items[i].link;
+                }
+                resolve(ret);
+            })
+            .catch(function(err) {
+                console.log(err);
                 reject(err);
             });
     });
