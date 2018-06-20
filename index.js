@@ -32,9 +32,10 @@ express().listen(PORT);
 var defaultErr = "I'm sorry, Dave, I'm afraid I can't do that.";
 
 // lists
-var lunchVote = [':cubimal_chick: alpaca chicken', ':pizza: brixx', ':beer: carolina ale house',
-                ':chopsticks: champa', ':bird: red robin', ':taco: san jose',
-                ':curry: tamarind', ':sushi: tasu', ':pie: your pie'];
+var lunchVote = [':flag-in: azitra', ':cubimal_chick: alpaca chicken', ':pizza: brixx',
+                ':beer: carolina ale house', ':chopsticks: champa', ':bird: red robin',
+                ':taco: san jose', ':curry: tamarind', ':sushi: tasu', ':baguette_bread: which wich',
+                ':pie: your pie', ':rice: zayka'];
 var emojiList = ['one', 'two', 'three', 'four', 'five',
                 'six', 'seven', 'eight', 'nine', 'keycap_ten'];
 
@@ -79,77 +80,6 @@ controller.hears(/^help/i, ['direct_message','direct_mention','mention'],functio
     messageText += '\n *angular<#> <function>* - pick an angular version and function and show the docs url';
     messageText += '\n *python<#> <function>* - pick a python version and function and show the docs url';
     bot.reply(message, messageText);
-});
-
-// list food trucks
-controller.hears(/^trucks/i, ['direct_message','direct_mention','mention'],function(bot,message) {
-    var messageText = 'Upcoming food trucks this week:';
-    var currDay = '';
-    var link = '';
-
-    // parse food truck html
-    localTrucks(bot).then(function(res) {
-        var localOut = res;
-
-        // parse frontier food trucks
-        frontierTrucks(bot).then(function(res) {
-            var frontierOut = res;
-
-            var mergedJson = {...localOut, ...frontierOut};
-            var sorted = Object.keys(mergedJson).sort();
-
-            _.forEach(sorted, function(value) {
-                var mergedKey = value;
-                var today = moment().format('MMMM-DD-YYYY');
-                var momentToday = moment(today, 'MMMM-DD-YYYY');
-                var mergedCompare = moment(mergedKey).format('MMMM-DD-YYYY');
-                var momentMerged = moment(mergedCompare, 'MMMM-DD-YYYY');
-
-                if (momentToday.isAfter(momentMerged) ||
-                    (momentToday.day() > momentMerged.day() && momentToday.day() < 6) ||
-                    momentMerged.date() > moment().date() + 7) {
-                    // do not show the trucks
-                } else {
-                    var date = moment(mergedKey).format('MMMM Do YYYY')
-                    if (moment(mergedKey).day() === 5) {
-                        messageText += '\n\n\n*' + date + '* - _Fidelity_' + mergedJson[mergedKey];
-                    } else {
-                        messageText += '\n\n\n*' + date + '* - _Courtyard_' + mergedJson[mergedKey];
-                    }
-                }
-            });
-
-            var post = {
-                channel: message.channel,
-                text: messageText,
-                unfurl_links: false,
-                unfurl_media: false
-            };
-
-            // slack api post to prevent unfurling
-            request
-                .post('https://slack.com/api/chat.postMessage')
-                .send(post)
-                .set('Accept', 'application/json')
-                .set('Authorization', 'Bearer ' + SLACK_TOKEN)
-                .then(function(res) {
-                    // do nothing
-                })
-                .catch(function(err) {
-                    console.log(err);
-                    bot.reply(message, defaultErr);
-                });
-
-        }).catch(function(err) {
-            console.log(err);
-            bot.reply(message, "Uh oh. Shit's broke.");
-        });
-
-    })
-    .catch(function(err) {
-        console.log(err);
-        bot.reply(message, "Uh oh. Shit's broke.");
-    });
 });
 
 // fuck off as a service
@@ -201,10 +131,10 @@ controller.hears(LIST_SITES, ['direct_message','direct_mention','mention','ambie
 
     var smmryUrl = 'https://api.smmry.com/';
     smmryUrl += '&SM_API_KEY=' + SMMRY_TOKEN;
-    smmryUrl += '&SM_URL=' + url;
     smmryUrl += '&SM_WITH_BREAK=true';
     smmryUrl += '&SM_LENGTH=3';
     smmryUrl += '&SM_QUESTION_AVOID=true';
+    smmryUrl += '&SM_URL=' + url;
 
     request
         .post(smmryUrl)
@@ -220,7 +150,7 @@ controller.hears(LIST_SITES, ['direct_message','direct_mention','mention','ambie
                 }
                 bot.reply(message, messageText);
             } else {
-                console.log('SMMRY: ' + potentialUrl + ' - ' + res.body.sm_api_message);
+                console.log('SMMRY: ' + smmryUrl + ' - ' + res.body.sm_api_message);
             }
         })
         .catch(function(err) {
@@ -276,6 +206,77 @@ controller.hears(/^menu/i, ['direct_message','direct_mention','mention'],functio
             console.log(err);
             bot.reply(message, defaultErr);
         });
+});
+
+// list food trucks
+controller.hears(/^trucks/i, ['direct_message','direct_mention','mention'],function(bot,message) {
+    var messageText = 'Upcoming food trucks this week:';
+    var currDay = '';
+    var link = '';
+
+    // parse food truck html
+    localTrucks(bot).then(function(res) {
+        var localOut = res;
+
+        // parse frontier food trucks
+        frontierTrucks(bot).then(function(res) {
+            var frontierOut = res;
+
+            var mergedJson = {...localOut, ...frontierOut};
+            var sorted = Object.keys(mergedJson).sort();
+
+            _.forEach(sorted, function(value) {
+                var mergedKey = value;
+                var today = moment().format('MMMM-DD-YYYY');
+                var momentToday = moment(today, 'MMMM-DD-YYYY');
+                var mergedCompare = moment(mergedKey).format('MMMM-DD-YYYY');
+                var momentMerged = moment(mergedCompare, 'MMMM-DD-YYYY');
+
+                if (momentToday.isAfter(momentMerged) ||
+                    (momentToday.day() > momentMerged.day() && momentToday.day() < 6) ||
+                    momentMerged.date() >= moment().date() + 7) {
+                    // do not show the trucks
+                } else {
+                    var date = moment(mergedKey).format('MMMM Do YYYY')
+                    if (moment(mergedKey).day() === 5) {
+                        messageText += '\n\n\n*' + date + '* - _Fidelity_' + mergedJson[mergedKey];
+                    } else {
+                        messageText += '\n\n\n*' + date + '* - _Courtyard_' + mergedJson[mergedKey];
+                    }
+                }
+            });
+
+            var post = {
+                channel: message.channel,
+                text: messageText,
+                unfurl_links: false,
+                unfurl_media: false
+            };
+
+            // slack api post to prevent unfurling
+            request
+                .post('https://slack.com/api/chat.postMessage')
+                .send(post)
+                .set('Accept', 'application/json')
+                .set('Authorization', 'Bearer ' + SLACK_TOKEN)
+                .then(function(res) {
+                    // do nothing
+                })
+                .catch(function(err) {
+                    console.log(err);
+                    bot.reply(message, defaultErr);
+                });
+
+        }).catch(function(err) {
+            console.log(err);
+            bot.reply(message, "Uh oh. Shit's broke.");
+        });
+
+    })
+    .catch(function(err) {
+        console.log(err);
+        bot.reply(message, "Uh oh. Shit's broke.");
+    });
 });
 
 // lunch vote
@@ -452,7 +453,7 @@ controller.hears(/^python\d\.\d .+$/i, ['direct_message','direct_mention','menti
                 bot.reply(message, messageText);
             } else {
                 messageText = baseUrl + element;
-                stackOverflow('python', search + ' module').then(function(res) {
+                stackOverflow('python', search).then(function(res) {
                     bot.reply(message, messageText + res);
                 }).catch(function(err) {
                     console.log(err);
@@ -470,17 +471,6 @@ controller.hears(/^python\d\.\d .+$/i, ['direct_message','direct_mention','menti
             }
 
         });
-});
-
-// snake
-controller.hears(/hsss/i, ['direct_message','direct_mention','mention','ambient'],function(bot,message) {
-    var messageText = 'https://www.youtube.com/watch?v=Ti4sqG85FU4';
-    bot.reply(message, messageText);
-});
-
-// space odyssey
-controller.hears(/^open the .*doors.*/i, ['direct_message','direct_mention','mention','ambient'],function(bot,message) {
-    bot.reply(message, defaultErr);
 });
 
 //////////////////////////////////////////
