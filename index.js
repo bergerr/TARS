@@ -1,7 +1,6 @@
 var Botkit      = require('botkit');
 var cheerio     = require('cheerio');
 var decode      = require('unescape');
-var express     = require('express');
 var isUrl       = require('is-url');
 var lev         = require('fast-levenshtein');
 var moment      = require('moment');
@@ -19,6 +18,7 @@ var auth        = require('./auth.js');
 var LIST_FUCK   = lists.fuckOff;
 var LIST_SITES  = lists.sitesToSummarize;
 var LIST_MENUS  = lists.menus;
+var LIST_LUNCH  = lists.lunch;
 var LIST_PEOPLE = lists.people;
 var LIST_TRUCKS = lists.trucks;
 var LIST_KEYS   = auth.keys;
@@ -26,19 +26,8 @@ var LIST_KEYS   = auth.keys;
 // consts
 const SLACK_TOKEN = LIST_KEYS.slack;
 const SMMRY_TOKEN = LIST_KEYS.smmry;
-const PORT = process.env.PORT || 5000;
-
-express().listen(PORT);
 
 var defaultErr = "Uh oh, shit's broke.";
-
-// lists
-var lunchVote = [':flag-in: azitra', ':cubimal_chick: alpaca chicken', ':pizza: brixx',
-                ':beer: carolina ale house', ':chopsticks: champa', ':bird: red robin',
-                ':taco: san jose', ':curry: tamarind', ':sushi: tasu', ':baguette_bread: which wich',
-                ':pie: your pie', ':rice: zayka'];
-var emojiList = ['one', 'two', 'three', 'four', 'five',
-                'six', 'seven', 'eight', 'nine', 'keycap_ten'];
 
 var controller = Botkit.slackbot({
     debug: false,
@@ -121,7 +110,6 @@ controller.hears(/....+/i, ['direct_message','direct_mention','mention','ambient
                 bot.reply(message, messageText);
         }
     }
-
 });
 
 //////////////////////////////////////////
@@ -360,7 +348,7 @@ var lunchFunc = function(bot, message, distance) {
         messageText = '"*' + message.text + "*\"? Really? Fine, I _guess_ that's close enough...\n\n"
     }
 
-    _.forEach(lunchVote, function(value) {
+    _.forEach(LIST_LUNCH, function(value) {
         messageText += value + '\n';
     });
 
@@ -370,26 +358,7 @@ var lunchFunc = function(bot, message, distance) {
         messageText += ':truck: food trucks'
     }
 
-    var post = {
-        channel: message.channel,
-        text: messageText,
-        unfurl_links: false,
-        unfurl_media: false
-    };
-
-    // slack api post to prevent unfurling
-    request
-        .post('https://slack.com/api/chat.postMessage')
-        .send(post)
-        .set('Accept', 'application/json')
-        .set('Authorization', 'Bearer ' + SLACK_TOKEN)
-        .then(function(res) {
-            // do nothing
-        })
-        .catch(function(err) {
-            console.log(err);
-            bot.reply(message, defaultErr);
-        });
+    bot.reply(message, messageText);
 };
 
 // java
@@ -654,7 +623,7 @@ var localTrucks = function(bot) {
                 reject(err);
             });
     });
-}
+};
 
 var frontierTrucks = function(bot) {
     return new Promise(function (resolve, reject) {
@@ -691,7 +660,7 @@ var frontierTrucks = function(bot) {
                 reject(err);
             });
     });
-}
+};
 
 var stackOverflow = function(language, search) {
     return new Promise(function (resolve, reject) {
@@ -722,29 +691,4 @@ var stackOverflow = function(language, search) {
                 reject(err);
             });
     });
-}
-
-var reactChain = function(count, channel, timestamp, end) {
-    if (count === end) {
-        return;
-    }
-
-    var post = {
-        channel: channel,
-        timestamp: timestamp,
-        name: emojiList[count]
-    }
-
-    request
-        .post('https://slack.com/api/reactions.add')
-        .send(post)
-        .set('Accept', 'application/json')
-        .set('Authorization', 'Bearer ' + SLACK_TOKEN)
-        .then(function(res) {
-            reactChain(++count, channel, timestamp, end);
-        })
-        .catch(function(err) {
-            console.log(err);
-            bot.reply(message, defaultErr);
-        });
-}
+};

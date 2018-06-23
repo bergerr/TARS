@@ -71,6 +71,7 @@ var menus = {
     'brasa': 'http://brasasteakhouse.com/menu/',
     'carolina ale house': 'https://www.carolinaalehouse.com/menu/',
     'champa': 'https://www.champathaisushi.com/menus',
+    'first watch': 'https://www.firstwatch.com/menu',
     'jason’s deli': 'https://www.jasonsdeli.com/menu',
     'pei wei': 'https://order.peiwei.com/menu/108-brier-creek',
     'red robin': 'https://www.redrobin.com/content/dam/web/menu/printable/menu-rrgb-t2.pdf',
@@ -82,6 +83,24 @@ var menus = {
     'your pie': 'https://yourpie.com/menu/',
     'zayka': 'https://zaykaraleigh.com/our-menu/'
 }
+
+var lunch = [
+    ':cubimal_chick: alpaca chicken',
+    ':flag-in: azitra',
+    ':pizza: brixx',
+    ':beer: carolina ale house',
+    ':chopsticks: champa',
+    ':pancakes: first watch',
+    ':bread: jason’s deli',
+    ':bird: red robin',
+    ':taco: san jose',
+    ':curry: tamarind',
+    ':sushi: tasu',
+    ':potato: trali',
+    ':baguette_bread: which wich',
+    ':pie: your pie',
+    ':rice: zayka'
+];
 
 var people = [
     'Andres',
@@ -139,6 +158,7 @@ module.exports = {
     fuckOff: fuckOff,
     sitesToSummarize: sitesToSummarize,
     menus: menus,
+    lunch: lunch,
     people: people,
     trucks: trucks
 }
