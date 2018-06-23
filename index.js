@@ -3,6 +3,7 @@ var cheerio     = require('cheerio');
 var decode      = require('unescape');
 var express     = require('express');
 var isUrl       = require('is-url');
+var lev         = require('fast-levenshtein');
 var moment      = require('moment');
 var mongoose    = require('mongoose');
 var path        = require('path');
@@ -67,16 +68,16 @@ controller.on('rtm_close', function(bot, err) {
 start_rtm();
 
 // catch all messages
-controller.hears(/....+/i, ['direct_message','direct_mention','mention', 'ambient'],function(bot,message) {
+controller.hears(/....+/i, ['direct_message','direct_mention','mention','ambient'],function(bot, message) {
     // ambient
     var fuck = /^fuck off [A-z]+$/;
     var sites = new RegExp(LIST_SITES.join('|').replace(/\./g, '\\.'));
 
     // direct
-    var help = /^help/;
+    var help = lev.get(message.text, 'help');
     var menu = /^menu/;
-    var trucks = /^trucks/;
-    var lunch = /^lunch/;
+    var trucks = lev.get(message.text, 'trucks');
+    var lunch = lev.get(message.text, 'lunch');
     var java = /^java\d+ .+$/;
     var angular = /^angular\d+ .+$/;
     var python = /^python\d\.\d .+$/;
@@ -84,36 +85,36 @@ controller.hears(/....+/i, ['direct_message','direct_mention','mention', 'ambien
     if (message.type == 'ambient') {
         switch(true) {
             case fuck.test(message.text):
-                fuckFunc(bot,message);
+                fuckFunc(bot, message);
                 break;
             case sites.test(message.text):
-                sitesFunc(bot,message);
+                sitesFunc(bot, message);
                 break;
             default:
                 // don't respond
         }
     } else {
         switch(true) {
-            case help.test(message.text):
-                helpFunc(bot,message);
+            case help < 2:
+                helpFunc(bot, message, help);
                 break;
             case menu.test(message.text):
-                menuFunc(bot,message);
+                menuFunc(bot, message);
                 break;
-            case trucks.test(message.text):
-                trucksFunc(bot,message)
+            case trucks < 2:
+                trucksFunc(bot, message, trucks)
                 break;
-            case lunch.test(message.text):
-                lunchFunc(bot,message);
+            case lunch < 2:
+                lunchFunc(bot, message, lunch);
                 break;
             case java.test(message.text):
-                javaFunc(bot,message);
+                javaFunc(bot, message);
                 break;
             case angular.test(message.text):
-                angularFunc(bot,message);
+                angularFunc(bot, message);
                 break;
             case python.test(message.text):
-                pythonFunc(bot,message);
+                pythonFunc(bot, message);
                 break;
             default:
                 var messageText = "I'm not sure what you want me to do.";
@@ -124,11 +125,96 @@ controller.hears(/....+/i, ['direct_message','direct_mention','mention', 'ambien
 });
 
 //////////////////////////////////////////
+//              AMBIENT
+//////////////////////////////////////////
+// fuck off as a service
+var fuckFunc = function(bot, message) {
+    var messageArr = message.text.split(' ');
+    if (messageArr.length === 3) {
+        var subject = messageArr[2];
+
+        if (subject.toLowerCase() === 'random') {
+            var subject = LIST_PEOPLE[Math.floor(Math.random() * LIST_PEOPLE.length)];
+        }
+
+        var randomFuck = LIST_FUCK[Math.floor(Math.random() * LIST_FUCK.length)];
+        var fooas = randomFuck.replace(':name', subject);
+
+        request
+            .get('http://foaas.com' + fooas)
+            .set('Accept', 'application/json')
+            .then(function(res) {
+                var messageText = res.body.message;
+                bot.reply(message, messageText);
+            })
+            .catch(function(err) {
+                console.log(err);
+                bot.reply(message, defaultErr);
+            });
+    } else {
+        bot.reply(message, defaultErr);
+    }
+};
+
+// article summary
+var sitesFunc = function(bot, message) {
+    var split = message.text.replace(/\n/g, ' ').split(' ');
+    var potentialUrl = '';
+
+    sites:
+    for (key in split) {
+        potentialUrl = split[key].substring(1, split[key].length - 1);
+        if (isUrl(potentialUrl)) {
+            for (site in LIST_SITES) {
+                if (potentialUrl.indexOf(LIST_SITES[site]) > -1){
+                    var url = potentialUrl;
+                    break sites;
+                }
+            }
+        }
+    }
+
+    var smmryUrl = 'https://api.smmry.com/';
+    smmryUrl += '&SM_API_KEY=' + SMMRY_TOKEN;
+    smmryUrl += '&SM_WITH_BREAK=true';
+    smmryUrl += '&SM_LENGTH=3';
+    smmryUrl += '&SM_QUESTION_AVOID=true';
+    smmryUrl += '&SM_URL=' + url;
+
+    request
+        .post(smmryUrl)
+        .then(function(res) {
+            // check if smmry returned well
+            if (res.body.sm_api_content) {
+                var messageText = "*Here's your article summary:*\n\n"
+                messageText += res.body.sm_api_content.replace(/\[BREAK\]/g, '\n\n');
+
+                var remaining = (res.body.sm_api_limitation.replace(/^\D+0\D+/g, '').replace(/\D+$/g, ''));
+                if (remaining.length === 1) {
+                    messageText += '\n Only ' + remaining + ' summaries left today!';
+                }
+                bot.reply(message, messageText);
+            } else {
+                console.log('SMMRY: ' + smmryUrl + ' - ' + res.body.sm_api_message);
+            }
+        })
+        .catch(function(err) {
+            console.log(err);
+            bot.reply(message, defaultErr);
+        })
+};
+
+//////////////////////////////////////////
 //              DIRECT
 //////////////////////////////////////////
 // list uses
-var helpFunc = function(bot, message) {
-    var messageText = "Here are your options:";
+var helpFunc = function(bot, message, distance) {
+    var messageText = '';
+    if (distance > 0) {
+        messageText = '"*' + message.text + "*\"? Really? Fine, I _guess_ that's close enough...\n\n"
+    }
+
+    messageText = "Here are your options:";
     messageText += '\n *trucks* - tell me what food trucks are here this week';
     messageText += '\n *fuck off <someone>* - tell someone to fuck off';
     messageText += '\n *fuck off random* - tell someone random to fuck off';
@@ -143,7 +229,7 @@ var helpFunc = function(bot, message) {
 };
 
 // menus
-var menuFunc = function(bot,message) {
+var menuFunc = function(bot, message) {
     var messageArr = message.text.split('menu ');
     var messageText = '';
 
@@ -192,7 +278,12 @@ var menuFunc = function(bot,message) {
 };
 
 // list food trucks
-var trucksFunc = function(bot,message) {
+var trucksFunc = function(bot, message, distance) {
+    var messageText = '';
+    if (distance > 0) {
+        messageText = '"*' + message.text + "*\"? Really? Fine, I _guess_ that's close enough...\n\n"
+    }
+
     var messageText = 'Upcoming food trucks this week:';
     var currDay = '';
     var link = '';
@@ -263,8 +354,11 @@ var trucksFunc = function(bot,message) {
 };
 
 // lunch vote
-var lunchFunc = function(bot,message) {
+var lunchFunc = function(bot, message, distance) {
     var messageText = '';
+    if (distance > 0) {
+        messageText = '"*' + message.text + "*\"? Really? Fine, I _guess_ that's close enough...\n\n"
+    }
 
     _.forEach(lunchVote, function(value) {
         messageText += value + '\n';
@@ -299,7 +393,7 @@ var lunchFunc = function(bot,message) {
 };
 
 // java
-var javaFunc = function(bot,message) {
+var javaFunc = function(bot, message) {
     var messageText = '';
     var tokens = message.text.split(' ');
     var version = tokens[0].replace(/\D+/g, '');
@@ -357,7 +451,7 @@ var javaFunc = function(bot,message) {
 };
 
 // angular
-var angularFunc = function(bot,message) {
+var angularFunc = function(bot, message) {
     var messageText = '';
     var tokens = message.text.split(' ');
     var version = tokens[0].replace(/\D+/g, '');
@@ -455,7 +549,7 @@ var angularFunc = function(bot,message) {
 };
 
 // python
-var pythonFunc = function(bot,message) {
+var pythonFunc = function(bot, message) {
     var messageText = '';
     var tokens = message.text.split(' ');
     var version = tokens[0].replace(/python/g, '');
@@ -511,86 +605,6 @@ var pythonFunc = function(bot,message) {
             }
 
         });
-};
-
-//////////////////////////////////////////
-//              AMBIENT
-//////////////////////////////////////////
-// fuck off as a service
-var fuckFunc = function(bot,message) {
-    var messageArr = message.text.split(' ');
-    if (messageArr.length === 3) {
-        var subject = messageArr[2];
-
-        if (subject.toLowerCase() === 'random') {
-            var subject = LIST_PEOPLE[Math.floor(Math.random() * LIST_PEOPLE.length)];
-        }
-
-        var randomFuck = LIST_FUCK[Math.floor(Math.random() * LIST_FUCK.length)];
-        var fooas = randomFuck.replace(':name', subject);
-
-        request
-            .get('http://foaas.com' + fooas)
-            .set('Accept', 'application/json')
-            .then(function(res) {
-                var messageText = res.body.message;
-                bot.reply(message, messageText);
-            })
-            .catch(function(err) {
-                console.log(err);
-                bot.reply(message, defaultErr);
-            });
-    } else {
-        bot.reply(message, defaultErr);
-    }
-};
-
-// article summary
-var sitesFunc = function(bot,message) {
-    var split = message.text.replace(/\n/g, ' ').split(' ');
-    var potentialUrl = '';
-
-    sites:
-    for (key in split) {
-        potentialUrl = split[key].substring(1, split[key].length - 1);
-        if (isUrl(potentialUrl)) {
-            for (site in LIST_SITES) {
-                if (potentialUrl.indexOf(LIST_SITES[site]) > -1){
-                    var url = potentialUrl;
-                    break sites;
-                }
-            }
-        }
-    }
-
-    var smmryUrl = 'https://api.smmry.com/';
-    smmryUrl += '&SM_API_KEY=' + SMMRY_TOKEN;
-    smmryUrl += '&SM_WITH_BREAK=true';
-    smmryUrl += '&SM_LENGTH=3';
-    smmryUrl += '&SM_QUESTION_AVOID=true';
-    smmryUrl += '&SM_URL=' + url;
-
-    request
-        .post(smmryUrl)
-        .then(function(res) {
-            // check if smmry returned well
-            if (res.body.sm_api_content) {
-                var messageText = "*Here's your article summary:*\n\n"
-                messageText += res.body.sm_api_content.replace(/\[BREAK\]/g, '\n\n');
-
-                var remaining = (res.body.sm_api_limitation.replace(/^\D+0\D+/g, '').replace(/\D+$/g, ''));
-                if (remaining.length === 1) {
-                    messageText += '\n Only ' + remaining + ' summaries left today!';
-                }
-                bot.reply(message, messageText);
-            } else {
-                console.log('SMMRY: ' + smmryUrl + ' - ' + res.body.sm_api_message);
-            }
-        })
-        .catch(function(err) {
-            console.log(err);
-            bot.reply(message, defaultErr);
-        })
 };
 
 //////////////////////////////////////////
