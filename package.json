@@ -1,24 +1,24 @@
 {
-    "name": "tars",
-    "version": "1.0.0",
-    "description": "",
-    "main": "index.js",
-    "scripts": {
-        "start": "node index.js"
-    },
-    "author": "",
-    "license": "UNLICENSED",
-    "dependencies": {
-        "body-parser": "^1.18.2",
-        "botkit": "^0.6.4",
-        "cheerio": "^1.0.0-rc.2",
-        "express": "^4.16.3",
-        "is-url": "^1.2.4",
-        "lodash": "^4.17.10",
-        "moment": "^2.22.1",
-        "mongoose": "^4.12.4",
-        "path": "^0.12.7",
-        "superagent": "^3.8.3",
-        "unescape": "^1.0.1"
-    }
+  "name": "tars",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "author": "",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "body-parser": "^1.18.2",
+    "botkit": "^0.6.4",
+    "cheerio": "^1.0.0-rc.2",
+    "express": "^4.16.3",
+    "is-url": "^1.2.4",
+    "lodash": "^4.17.10",
+    "moment": "^2.22.1",
+    "mongoose": "^4.12.4",
+    "path": "^0.12.7",
+    "superagent": "^3.8.3",
+    "unescape": "^1.0.1"
+  }
 }
