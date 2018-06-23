@@ -70,7 +70,7 @@ start_rtm();
 controller.hears(/....+/i, ['direct_message','direct_mention','mention', 'ambient'],function(bot,message) {
     // ambient
     var fuck = /^fuck off [A-z]+$/;
-    var sites = new RegExp(LIST_SITES.join("|"));
+    var sites = new RegExp(LIST_SITES.join('|').replace(/\./g, '\\.'));
 
     // direct
     var help = /^help/;
@@ -90,8 +90,7 @@ controller.hears(/....+/i, ['direct_message','direct_mention','mention', 'ambien
                 sitesFunc(bot,message);
                 break;
             default:
-                var messageText = "I'm not sure what you want me to do.";
-                bot.reply(message, messageText);
+                // don't respond
         }
     } else {
         switch(true) {
