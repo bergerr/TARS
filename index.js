@@ -81,6 +81,7 @@ controller.hears(/....+/i, ['direct_message','direct_mention','mention','ambient
                 break;
             default:
                 // don't respond
+                break;
         }
     } else {
         switch(true) {
@@ -91,7 +92,7 @@ controller.hears(/....+/i, ['direct_message','direct_mention','mention','ambient
                 menuFunc(bot, message);
                 break;
             case trucks < 2:
-                trucksFunc(bot, message, trucks)
+                trucksFunc(bot, message, trucks);
                 break;
             case lunch < 2:
                 lunchFunc(bot, message, lunch);
@@ -108,6 +109,7 @@ controller.hears(/....+/i, ['direct_message','direct_mention','mention','ambient
             default:
                 var messageText = "I'm not sure what you want me to do.";
                 bot.reply(message, messageText);
+                break;
         }
     }
 });
@@ -202,7 +204,7 @@ var helpFunc = function(bot, message, distance) {
         messageText = '"*' + message.text + "*\"? Really? Fine, I _guess_ that's close enough...\n\n"
     }
 
-    messageText = "Here are your options:";
+    messageText += "Here are your options:";
     messageText += '\n *trucks* - tell me what food trucks are here this week';
     messageText += '\n *fuck off <someone>* - tell someone to fuck off';
     messageText += '\n *fuck off random* - tell someone random to fuck off';
@@ -272,19 +274,25 @@ var trucksFunc = function(bot, message, distance) {
         messageText = '"*' + message.text + "*\"? Really? Fine, I _guess_ that's close enough...\n\n"
     }
 
-    var messageText = 'Upcoming food trucks this week:';
+    messageText += 'Upcoming food trucks this week:';
     var currDay = '';
     var link = '';
 
     // parse food truck html
-    localTrucks(bot).then(function(res) {
+    localTrucks().then(function(res) {
         var localOut = res;
 
         // parse frontier food trucks
-        frontierTrucks(bot).then(function(res) {
-            var frontierOut = res;
+        frontierTrucks().then(function(res) {
+            var append = '';
+            var mergedJson;
+            if (res == defaultErr) {
+                mergedJson = {...localOut};
+                append = '\n\n *Error* - Could not fetch Frontier trucks. View them here: https://www.rtp.org/program/rtp-food-truck-rodeo/'
+            } else {
+                mergedJson = {...localOut, ...res};
+            }
 
-            var mergedJson = {...localOut, ...frontierOut};
             var sorted = Object.keys(mergedJson).sort();
 
             _.forEach(sorted, function(value) {
@@ -307,6 +315,8 @@ var trucksFunc = function(bot, message, distance) {
                     }
                 }
             });
+
+            messageText += append;
 
             var post = {
                 channel: message.channel,
@@ -579,7 +589,7 @@ var pythonFunc = function(bot, message) {
 //////////////////////////////////////////
 //              FUNCTIONS
 //////////////////////////////////////////
-var localTrucks = function(bot) {
+var localTrucks = function() {
     return new Promise(function (resolve, reject) {
         var output = '';
         var trucks = '';
@@ -619,13 +629,12 @@ var localTrucks = function(bot) {
             })
             .catch(function(err) {
                 console.log(err);
-                bot.reply(message, defaultErr);
-                reject(err);
+                resolve(defaultErr);
             });
     });
 };
 
-var frontierTrucks = function(bot) {
+var frontierTrucks = function() {
     return new Promise(function (resolve, reject) {
         var output = '';
         var json = {};
@@ -655,9 +664,8 @@ var frontierTrucks = function(bot) {
                 resolve(json);
             })
             .catch(function(err) {
-                console.log(err);
-                bot.reply(message, "Couldn't find food trucks at Fidelity");
-                reject(err);
+                console.log('Frontier trucks failed');
+                resolve(defaultErr);
             });
     });
 };
