@@ -15,13 +15,14 @@ var lists       = require('./lists.js');
 var auth        = require('./auth.js');
 
 // export lists
-var LIST_FUCK   = lists.fuckOff;
-var LIST_SITES  = lists.sitesToSummarize;
-var LIST_MENUS  = lists.menus;
-var LIST_LUNCH  = lists.lunch;
-var LIST_PEOPLE = lists.people;
-var LIST_TRUCKS = lists.trucks;
-var LIST_KEYS   = auth.keys;
+var LIST_FUCK       = lists.fuckOff;
+var LIST_SITES      = lists.sitesToSummarize;
+var LIST_MENUS      = lists.menus;
+var LIST_LUNCH      = lists.lunch;
+var LIST_PEOPLE     = lists.people;
+var LIST_TRUCKS     = lists.trucks;
+var LIST_ALT_TRUCKS = lists.alt_trucks;
+var LIST_KEYS       = auth.keys;
 
 // consts
 const SLACK_TOKEN = LIST_KEYS.slack;
@@ -596,29 +597,29 @@ var localTrucks = function() {
         var json = {};
 
         request
-            .get('http://www.briercreekeatsalternative.com/weeklylineup/')
+            .get('https://streetfoodfinder.com/embed/spot/404/calendar/page?dts=2')
             .then(function(res) {
                 var $ = cheerio.load(res.res.text);
-                $('.summary-title-link').each(function(i, element) {
-                    date = $(this).parent().parent().parent().parent().parent().parent().parent().parent().prev().children().find('h2').text().trim();
+                $('.blog-title').each(function(i, element) {
+                    date = $(this).parent().parent().parent().parent().parent().parent().parent().prev().text().replace('11:30 AM - 1:30 PM','').trim();
                     if (i === 0) {
-                        output = moment(date.substring(0, date.indexOf('|')).replace(',',''), 'MMMM Do YYYY').format();
+                        output = moment(date.replace(',',''), 'MMMM Do YYYY').format();
+                        json[output] = trucks;
                         currDay = date;
                     }
                     if (currDay !== date) {
                         json[output] = trucks;
                         trucks = '';
-                        output = moment(date.substring(0, date.indexOf('|')).replace(',',''), 'MMMM Do YYYY').format();
+                        output = moment(date.replace(',',''), 'MMMM Do YYYY').format();
                         currDay = date;
                     }
 
                     var truck = $(this).text().trim();
                     var link = '_No working link_';
-                    if (!$(this).attr('href').startsWith('/')) {
-                        link = $(this).attr('href');
-                    }
-                    else if (LIST_TRUCKS.hasOwnProperty(truck.toLowerCase())) {
+                    if (LIST_TRUCKS.hasOwnProperty(truck.toLowerCase())) {
                         link = LIST_TRUCKS[truck.toLowerCase()];
+                    } else if (LIST_ALT_TRUCKS.hasOwnProperty(truck.toLowerCase())) {
+                        link = LIST_ALT_TRUCKS[truck.toLowerCase()];
                     }
 
                     trucks += '\n ' + truck + ' - ' + link;
@@ -655,7 +656,10 @@ var frontierTrucks = function() {
                         var link = '_No working link_';
                         if (LIST_TRUCKS.hasOwnProperty(truck.toLowerCase())) {
                             link = LIST_TRUCKS[truck.toLowerCase()];
+                        } else if (LIST_ALT_TRUCKS.hasOwnProperty(truck.toLowerCase())) {
+                            link = LIST_ALT_TRUCKS[truck.toLowerCase()];
                         }
+
                         output += '\n' + truck + ' - ' + link;
                     });
 
