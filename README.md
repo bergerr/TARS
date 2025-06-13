@@ -1,7 +1,7 @@
 # Usage
 Slack and Smmry tokens are taken from the nonexistent file `auth.js` with the following structure:
 
-```json
+```javascript
 var keys = {
     "slack": "slack-key",
     "smmry": "smmry-key"
