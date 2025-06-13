@@ -15,11 +15,9 @@ var lists       = require('./lists.js');
 var auth        = require('./auth.js');
 
 // export lists
-var LIST_FUCK       = lists.fuckOff;
 var LIST_SITES      = lists.sitesToSummarize;
 var LIST_MENUS      = lists.menus;
 var LIST_LUNCH      = lists.lunch;
-var LIST_PEOPLE     = lists.people;
 var LIST_TRUCKS     = lists.trucks;
 var LIST_ALT_TRUCKS = lists.alt_trucks;
 var LIST_KEYS       = auth.keys;
@@ -60,7 +58,6 @@ start_rtm();
 // catch all messages
 controller.hears(/....+/i, ['direct_message','direct_mention','mention','ambient'],function(bot, message) {
     // ambient
-    var fuck = /^fuck off [A-z]+$/;
     var sites = new RegExp(LIST_SITES.join('|').replace(/\./g, '\\.'));
 
     // direct
@@ -74,9 +71,6 @@ controller.hears(/....+/i, ['direct_message','direct_mention','mention','ambient
 
     if (message.type == 'ambient') {
         switch(true) {
-            case fuck.test(message.text):
-                fuckFunc(bot, message);
-                break;
             case sites.test(message.text):
                 sitesFunc(bot, message);
                 break;
@@ -118,35 +112,6 @@ controller.hears(/....+/i, ['direct_message','direct_mention','mention','ambient
 //////////////////////////////////////////
 //              AMBIENT
 //////////////////////////////////////////
-// fuck off as a service
-var fuckFunc = function(bot, message) {
-    var messageArr = message.text.split(' ');
-    if (messageArr.length === 3) {
-        var subject = messageArr[2];
-
-        if (subject.toLowerCase() === 'random') {
-            var subject = LIST_PEOPLE[Math.floor(Math.random() * LIST_PEOPLE.length)];
-        }
-
-        var randomFuck = LIST_FUCK[Math.floor(Math.random() * LIST_FUCK.length)];
-        var fooas = randomFuck.replace(':name', subject);
-
-        request
-            .get('http://foaas.com' + fooas)
-            .set('Accept', 'application/json')
-            .then(function(res) {
-                var messageText = res.body.message;
-                bot.reply(message, messageText);
-            })
-            .catch(function(err) {
-                console.log(err);
-                bot.reply(message, defaultErr);
-            });
-    } else {
-        bot.reply(message, defaultErr);
-    }
-};
-
 // article summary
 var sitesFunc = function(bot, message) {
     var split = message.text.replace(/\n/g, ' ').split(' ');
@@ -207,8 +172,6 @@ var helpFunc = function(bot, message, distance) {
 
     messageText += "Here are your options:";
     messageText += '\n *trucks* - tell me what food trucks are here this week';
-    messageText += '\n *fuck off <someone>* - tell someone to fuck off';
-    messageText += '\n *fuck off random* - tell someone random to fuck off';
     messageText += '\n *menu list* - show the menu options';
     messageText += '\n *menu all* - show every menu';
     messageText += '\n *menu <restaurant>* - show a specific menu';
