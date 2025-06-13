@@ -1,37 +1,3 @@
-var fuckOff = [
-    '/back/:name/TARS',
-    '/ballmer/:name/the AKC/TARS',
-    '/bday/:name/TARS',
-    '/blackadder/:name/TARS',
-    '/bm/:name/TARS',
-    '/bus/:name/TARS',
-    '/chainsaw/:name/TARS',
-    '/cocksplat/:name/TARS',
-    '/dalton/:name/TARS',
-    '/deraadt/:name/TARS',
-    '/donut/:name/TARS',
-    '/equity/:name/TARS',
-    '/gfy/:name/TARS',
-    '/ing/:name/TARS',
-    '/keep/:name/TARS',
-    '/king/:name/TARS',
-    '/linus/:name/TARS',
-    '/look/:name/TARS',
-    '/madison/:name/TARS',
-    '/nugget/:name/TARS',
-    '/off/:name/TARS',
-    '/outside/:name/TARS',
-    '/problem/:name/TARS',
-    '/shakespeare/:name/TARS',
-    '/shutup/:name/TARS',
-    '/think/:name/TARS',
-    '/thinking/:name/TARS',
-    '/thumbs/:name/TARS',
-    '/xmas/:name/TARS',
-    '/yoda/:name/TARS',
-    '/you/:name/TARS'
-];
-
 var sitesToSummarize = [
     'abcnews.go.com/',
     'androidpolice.com/',
@@ -135,18 +101,6 @@ var lunch = [
     ':baguette_bread: which wich',
     ':pie: your pie',
     ':rice: zayka'
-];
-
-var people = [
-    'Andres',
-    'Brett',
-    'Frank',
-    'Jamie',
-    'Linda',
-    'Lura',
-    'Melanie',
-    'Rachel',
-    'Ryan'
 ];
 
 var trucks = {
@@ -266,11 +220,9 @@ var alt_trucks = {
 }
 
 module.exports = {
-    fuckOff: fuckOff,
     sitesToSummarize: sitesToSummarize,
     menus: menus,
     lunch: lunch,
-    people: people,
-    trucks: trucks,
+    trucks: trucks
     alt_trucks: alt_trucks
 }
